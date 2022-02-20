@@ -1,0 +1,24 @@
+2次元正規分布を描画
+```{r}
+library(ggplot2)
+library(mvtnorm)
+sigma = matrix(c(3, 1, 1, 2), ncol = 2)
+rand = rmvnorm(n = 1000, mean = c(0, 0), sigma)
+x1 = rand[, 1]
+x2 = rand[, 2]
+df <- data.frame(x1 = x1, x2 = x2)
+p <- ggplot(df, aes(x1, x2)) + geom_point() + theme_classic()
+ggExtra::ggMarginal(p, type = "histogram")
+```
+
+```{r}
+x1 = seq(-3, 3, length = 50)
+x2 = x1
+f = function(x1, x2) {
+  dmvnorm(matrix(c(x1, x2), ncol = 2), mean = c(0, 0), sigma = sigma)
+}
+p = outer(x1, x2, f)
+p[is.na(p)] = 1
+op = par(bg = "white")
+persp(x1, x2, p, theta = 30, phi = 30, expand = 0.5, col = "orange")  
+```
