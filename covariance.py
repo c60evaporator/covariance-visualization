@@ -61,27 +61,48 @@ def p(y1, y2):
 P = p(X1, X2)  # 変換前の同時分布計算
 plot_joint_distribution(X1, X2, P)  # 同時分布をプロット
 
+###### スキュー ######8
+PHI = 45  # スキューの角度
+phi_rad = PHI*2*np.pi/360
+skew_mat = np.array([[1, np.tan(phi_rad)],
+                     [0, 1]])  # スキューの行列
+mag_skew_inv = np.linalg.inv(skew_mat)  # スキューの逆行列
+y1, y2 = mat_vec_multiplication(mag_skew_inv, X1, X2)  # 拡大縮小＋回転の逆変換
+P = p(y1, y2)  # 変換後の同時分布計算
+plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
 ###### 拡大縮小 ######
-mag_mat = np.array([[SIGMA1,0],[0,SIGMA2]])  # 拡大縮小行列
-mag_inv = np.linalg.inv(mag_mat)  # 拡大縮小の逆行列
-y1, y2 = mat_vec_multiplication(mag_inv, X1, X2)  # 拡大縮小の逆変換
+mag_mat = np.array([[SIGMA1,0],
+                    [0,SIGMA2]])  # 拡大縮小行列
+mag_inv = np.linalg.inv(mag_mat@skew_mat)  # スキュー＋拡大縮小の逆行列
+y1, y2 = mat_vec_multiplication(mag_inv, X1, X2)  # スキュー＋拡大縮小の逆変換
+P = p(y1, y2)  # 変換後の同時分布計算
+plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+###### 反転 ######
+mir_mat = np.array([[1,0],
+                    [0,-1]])  # 拡大縮小行列
+mir_inv = np.linalg.inv(mir_mat@mag_mat@skew_mat)  # スキュー＋拡大縮小＋反転の逆行列
+y1, y2 = mat_vec_multiplication(mir_inv, X1, X2)  # スキュー＋拡大縮小＋反転の逆変換
 P = p(y1, y2)  # 変換後の同時分布計算
 plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
 
 ###### 回転 ######
-THETA = 30  # 回転角度
+THETA = 60  # 回転角度
 theta_rad = THETA*2*np.pi/360  # ラジアンに変換
 rot_mat = np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
                     [np.sin(theta_rad), np.cos(theta_rad)]])  # 回転行列
-mag_rot_inv = np.linalg.inv(rot_mat@mag_mat)  # 拡大縮小＋回転の逆行列
-y1, y2 = mat_vec_multiplication(mag_rot_inv, X1, X2)  # 拡大縮小＋回転の逆変換
+rot_inv = np.linalg.inv(rot_mat@mir_mat@mag_mat@skew_mat)  # スキュー＋拡大縮小＋反転＋回転の逆行列
+y1, y2 = mat_vec_multiplication(rot_inv, X1, X2)  # スキュー＋拡大縮小＋反転＋回転の逆変換
 P = p(y1, y2)  # 変換後の同時分布計算
 plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+
 
 ###### 平行移動 ######
 # 平行移動ベクトル
 y1, y2 = X1-MU1, X2-MU2  # 平行移動の逆変換
-y1, y2 = mat_vec_multiplication(mag_rot_inv, y1, y2)  # 拡大縮小＋回転の逆変換
+y1, y2 = mat_vec_multiplication(rot_inv, y1, y2)  # スキュー＋拡大縮小＋反転＋回転の逆変換
 P = p(y1, y2)  # 変換後の同時分布計算
 plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
 
