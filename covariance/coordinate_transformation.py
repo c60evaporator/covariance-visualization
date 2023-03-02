@@ -67,7 +67,7 @@ phi_rad = PHI*2*np.pi/360
 skew_mat = np.array([[1, np.tan(phi_rad)],
                      [0, 1]])  # スキューの行列
 mag_skew_inv = np.linalg.inv(skew_mat)  # スキューの逆行列
-y1, y2 = mat_vec_multiplication(mag_skew_inv, X1, X2)  # 拡大縮小＋回転の逆変換
+y1, y2 = mat_vec_multiplication(mag_skew_inv, X1, X2)  # スキューの逆変換
 P = p(y1, y2)  # 変換後の同時分布計算
 plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
 
@@ -103,6 +103,67 @@ plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
 # 平行移動ベクトル
 y1, y2 = X1-MU1, X2-MU2  # 平行移動の逆変換
 y1, y2 = mat_vec_multiplication(rot_inv, y1, y2)  # スキュー＋拡大縮小＋反転＋回転の逆変換
+P = p(y1, y2)  # 変換後の同時分布計算
+plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+# %% 特異値分解
+A = rot_mat@mir_mat@mag_mat@skew_mat  # スキュー＋拡大縮小＋反転＋回転の行列
+print(A)
+# Aを特異値分解
+U, S, Vt = np.linalg.svd(A, full_matrices=True)
+a = U[1,1]
+# Uの反転有無を判定 (対角成分の符号が一致していれば反転なし)
+if U[0,0] * U[1,1] > 0:
+    U_rotmir = [U]
+else:
+    U_rotmir = [np.array([[U[0,0], -U[0,1]],[-U[1,0], -U[1,1]]]), np.array([[1,0],[0,-1]])]
+# Vの反転有無を判定 (対角成分の符号が一致していれば反転なし)
+if Vt[0,0] * Vt[1,1] > 0:
+    V_rotmir = [Vt]
+else:
+    V_rotmir = [np.array([[Vt[0,0], -Vt[0,1]],[-Vt[1,0], -Vt[1,1]]]), np.array([[1,0],[0,-1]])]
+
+###### 座標変換前 ######
+P = p(X1, X2)  # 変換前の同時分布計算
+plot_joint_distribution(X1, X2, P)  # 同時分布をプロット
+
+###### Vによる回転 ######
+v_rot_inv = np.linalg.inv(V_rotmir[0])  # V回転の逆行列
+y1, y2 = mat_vec_multiplication(v_rot_inv, X1, X2)  # V回転の逆変換
+P = p(y1, y2)  # 変換後の同時分布計算
+plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+###### Vによる反転(反転存在時のみ) ######
+if len(V_rotmir) == 2:
+    v_mir_inv = np.linalg.inv(V_rotmir[1]@V_rotmir[0])  # V回転+V反転の逆行列
+    y1, y2 = mat_vec_multiplication(v_mir_inv, X1, X2)  # V回転の逆変換
+    P = p(y1, y2)  # 変換後の同時分布計算
+    plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+###### 拡大縮小 ######
+S_mag_mat = np.array([[S[0],0],[0,S[1]]])
+mag_inv = np.linalg.inv(S_mag_mat@Vt)  # V＋拡大縮小の逆行列
+y1, y2 = mat_vec_multiplication(mag_inv, X1, X2)  # V＋拡大縮小の逆変換
+P = p(y1, y2)  # 変換後の同時分布計算
+plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+###### Uによる反転(反転存在時のみ) ######
+if len(U_rotmir) == 2:
+    u_mir_inv = np.linalg.inv(U_rotmir[1]@S_mag_mat@Vt)  # V＋拡大縮小+U反転の逆行列
+    y1, y2 = mat_vec_multiplication(u_mir_inv, X1, X2)  # V＋拡大縮小+U反転逆変換
+    P = p(y1, y2)  # 変換後の同時分布計算
+    plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+###### Uによる回転 ######
+u_rot_inv = np.linalg.inv(U@S_mag_mat@Vt)  # V＋拡大縮小+Uの逆行列
+y1, y2 = mat_vec_multiplication(u_rot_inv, X1, X2)  # V＋拡大縮小+Uの逆変換
+P = p(y1, y2)  # 変換後の同時分布計算
+plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
+
+###### 平行移動 ######
+# 平行移動ベクトル
+y1, y2 = X1-MU1, X2-MU2  # 平行移動の逆変換
+y1, y2 = mat_vec_multiplication(u_rot_inv, y1, y2)  # スキュー＋拡大縮小＋反転＋回転の逆変換
 P = p(y1, y2)  # 変換後の同時分布計算
 plot_joint_distribution(y1, y2, P)  # 同時分布をプロット
 
@@ -153,4 +214,6 @@ fig, axes = plt.subplots(1, 1, figsize=(6, 6))
 plt.contour(X1, X2, P, cmap="YlGn_r")
 ax.set_xlabel("x1", size = 16)  # x1軸
 ax.set_ylabel("x2", size = 16)  # x2軸
+
+
 # %%
